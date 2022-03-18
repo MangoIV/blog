@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <title>MangoIV's blog - 2021-03-18-haskell-classes</title>
+        <link rel="stylesheet" type="text/css" href="../css/default.css" />
+        <link rel="stylesheet" type="text/css" href="../css/syntax.css" />
+    </head>
+    <body>
+        <div id="header">
+            <div id="logo">
+                <a href="../">My Hakyll Blog</a>
+            </div>
+            <div id="navigation">
+                <a href="../">Home</a>
+                <a href="../about.html">About</a>
+                <a href="../contact.html">Contact</a>
+                <a href="../archive.html">Archive</a>
+            </div>
+        </div>
+
+        <div id="content">
+            <h1>2021-03-18-haskell-classes</h1>
+
+            <div class="info">
+    Posted on March 18, 2021
+    
+</div>
+
+<h1 id="haskell-classes-and-my-love-hate-relationship-with-them">Haskell classes and my love-hate relationship with them</h1>
+<h2 id="an-overview">An overview</h2>
+<h3 id="what-are-haskell-classes">What are Haskell classes</h3>
+<p>Haskell classes are</p>
+<ol type="1">
+<li><h3 id="a-way-to-group-types-with-certain-properties">A way to group types with certain properties</h3>
+<p>This is the “original” use case Haskell classes have been made for, a classic example for that is the class <code>Semigroup</code>:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">type</span> <span class="dt">Semigroup</span><span class="ot"> ::</span> <span class="dt">Type</span> <span class="ot">-&gt;</span> <span class="dt">Constraint</span> </span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">Semigroup</span> a <span class="kw">where</span> </span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ot">  (&lt;&gt;) ::</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- other class methods ommited because</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- they are unimportant</span></span></code></pre></div>
+<p>The <code>Semigroup</code> class makes it possible to group all Types together with an associative operation, namely <code>&lt;&gt;</code>. In the case of <code>String</code>, this aliases to <code>++</code>, in case of the <code>newtype</code> <code>Sum</code> it aliases to <code>+</code>.</p></li>
+<li><h3 id="a-way-to-define-functions-from-the-type-to-the-value-level">A way to define functions from the type to the value level</h3>
+<p>of course here I’m obligated to show the infamous <code>reifyNat</code> example.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE KindSignatures, DataKinds, </span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ot">    AllowAmbiguousTypes, TypeApplications, </span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="ot">    ScopedTypeVariables #-}</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="kw">import</span> <span class="dt">Numeric.Natural</span> (<span class="dt">Natural</span>)</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Nat</span> <span class="ot">=</span> <span class="dt">Z</span> </span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>         <span class="op">|</span> <span class="dt">S</span> <span class="dt">Nat</span> </span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">ReifyNat</span> (<span class="ot">n::</span><span class="dt">Nat</span>) <span class="kw">where</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="ot">  reifyNat ::</span> <span class="dt">Natural</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ReifyNat</span> n <span class="ot">=&gt;</span> <span class="dt">ReifyNat</span> (<span class="dt">S</span> n) <span class="kw">where</span> </span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    reifyNat <span class="ot">=</span> <span class="dv">1</span> <span class="op">+</span> reifyNat <span class="op">@</span>n</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">ReifyNat</span> <span class="dt">Z</span> <span class="kw">where</span> </span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  reifyNat <span class="ot">=</span> <span class="dv">0</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="ot">sampleNat ::</span> <span class="dt">Natural</span> </span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>sampleNat <span class="ot">=</span> reifyNat <span class="op">@</span>(<span class="dt">S</span> (<span class="dt">S</span> <span class="dt">Z</span>))</span></code></pre></div>
+<p>(this code snippet makes you wonder whether there is actually anything useful you can do with Haskell without extensions, lol)</p>
+<p>Of course this doesn’t only apply to converting type level peano naturals to value level naturals but also to more useful things, e.g. proof witnesses for things like heterogeneous records.</p></li>
+<li><h3 id="a-way-to-overload-functions">A way to overload functions</h3>
+<p>This generalizes and at the same time - at least in my opinion - abuses the class mechanism. I think if you use classes to overload function names, the grouped types should at least in some sense allow for the definition of laws for the class, which makes this a subset of 1.</p></li>
+<li><h3 id="a-way-to-define-relations-between-types">A way to define Relations between types</h3>
+<p>A nice example for that is that you might always want a singleton in a length indexed vector to be returned as the element it actually contains instead of the singleton to save unwrapping. This might sound a bit contrived but I have encountered this particular example two times in a short time recently so I don’t want to leave it out:</p>
+<p>First of all let us - after enabling some more extensions, I will not continue writing them down anymre as GHC offers you to activate them anyway - define a vector GADT:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Vec</span> (<span class="ot">n ::</span> <span class="dt">Nat</span>) (<span class="ot">a::</span><span class="dt">Type</span>) <span class="kw">where</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Nil</span><span class="ot"> ::</span> <span class="dt">Vec</span> <span class="dt">Z</span> a</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ot">  (:::) ::</span> a <span class="ot">-&gt;</span> <span class="dt">Vec</span> n a <span class="ot">-&gt;</span> <span class="dt">Vec</span> (<span class="dt">S</span> n) a</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="kw">infixr</span> <span class="dv">5</span> <span class="op">:::</span></span></code></pre></div>
+<p>Let’s look if it type checks:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ot">v ::</span> <span class="dt">Vec</span> (<span class="dt">S</span> (<span class="dt">S</span> <span class="dt">Z</span>)) <span class="dt">Int</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>v <span class="ot">=</span> <span class="dv">3</span> <span class="op">:::</span> <span class="dv">4</span> <span class="op">:::</span> <span class="dt">Nil</span></span></code></pre></div>
+<p>Thankfully, all is fine.</p>
+<p>Now let’s go on and define our class:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> <span class="dt">UnwrapSingleton</span> a b <span class="op">|</span> a <span class="ot">-&gt;</span> b <span class="kw">where</span> </span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  maybeUnwrap ::</span> a <span class="ot">-&gt;</span> b</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">-- every singleton gets unwrapped to the element</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">UnwrapSingleton</span> (<span class="dt">Vec</span> (<span class="dt">S</span> <span class="dt">Z</span>) a) a <span class="kw">where</span> </span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>  maybeUnwrap (a <span class="op">:::</span> <span class="dt">Nil</span>) <span class="ot">=</span> a</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">-- every list that is the successor of anything </span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">-- that isn't Z just gets id'd</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> </span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>  <span class="dt">UnwrapSingleton</span> (<span class="dt">Vec</span> (<span class="dt">S</span> (<span class="dt">S</span> b)) a) (<span class="dt">Vec</span> (<span class="dt">S</span> (<span class="dt">S</span> b)) a) </span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="kw">where</span> </span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>  maybeUnwrap <span class="ot">=</span> <span class="fu">id</span> </span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="co">-- same for empty vectors</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">UnwrapSingleton</span> (<span class="dt">Vec</span> <span class="dt">Z</span> a) (<span class="dt">Vec</span> <span class="dt">Z</span> a) <span class="kw">where</span> </span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>  maybeUnwrap <span class="ot">=</span> <span class="fu">id</span></span></code></pre></div>
+<p>As a result we can now use it like this:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>sing <span class="ot">=</span> maybeUnwrap (<span class="dv">3</span> <span class="op">:::</span> <span class="dt">Nil</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>notsing <span class="ot">=</span> maybeUnwrap (<span class="dv">4</span> <span class="op">:::</span> <span class="dv">3</span> <span class="op">:::</span> <span class="dt">Nil</span>)</span></code></pre></div>
+<p>if we ask ghc what type <code>sing</code> has it will happily tell us that it is an <code>Integer</code> (it defaults the literal 3 to be of that type)</p></li>
+</ol>
+
+        </div>
+        <div id="footer">
+            Site proudly generated by
+            <a href="http://jaspervdj.be/hakyll">Hakyll</a>
+        </div>
+    </body>
+</html>

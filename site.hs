@@ -1,9 +1,12 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-import           Data.Monoid (mappend)
-import           Hakyll
+import Data.Monoid (mappend)
+import Hakyll
+import Text.Pandoc.Highlighting (Style, styleToCss, haddock)
+import Text.Pandoc.Options (ReaderOptions, WriterOptions (writerHighlightStyle))
 
 --------------------------------------------------------------------------------
+
 main :: IO ()
 main = hakyllWith config $ do
     match "images/*" $ do
@@ -16,13 +19,13 @@ main = hakyllWith config $ do
 
     match (fromList ["about.rst", "contact.markdown"]) $ do
         route   $ setExtension "html"
-        compile $ pandocCompiler
+        compile $ pandocCompiler'
             >>= loadAndApplyTemplate "templates/default.html" defaultContext
             >>= relativizeUrls
 
     match "posts/*" $ do
         route $ setExtension "html"
-        compile $ pandocCompiler
+        compile $ pandocCompiler'
             >>= loadAndApplyTemplate "templates/post.html"    postCtx
             >>= loadAndApplyTemplate "templates/default.html" postCtx
             >>= relativizeUrls
@@ -32,8 +35,8 @@ main = hakyllWith config $ do
         compile $ do
             posts <- recentFirst =<< loadAll "posts/*"
             let archiveCtx =
-                    listField "posts" postCtx (return posts) `mappend`
-                    constField "title" "Archives"            `mappend`
+                    listField "posts" postCtx (return posts) <>
+                    constField "title" "Archives"            <>
                     defaultContext
 
             makeItem ""
@@ -47,8 +50,8 @@ main = hakyllWith config $ do
         compile $ do
             posts <- recentFirst =<< loadAll "posts/*"
             let indexCtx =
-                    listField "posts" postCtx (return posts) `mappend`
-                    constField "title" "Home"                `mappend`
+                    listField "posts" postCtx (return posts) <>
+                    constField "title" "Home"                <>
                     defaultContext
 
             getResourceBody
@@ -57,6 +60,10 @@ main = hakyllWith config $ do
                 >>= relativizeUrls
 
     match "templates/*" $ compile templateCompiler
+    
+    create [ "css/syntax.css" ] $ do 
+      route idRoute 
+      compile $ makeItem $ styleToCss style
 
 
 --------------------------------------------------------------------------------
@@ -70,3 +77,12 @@ config = defaultConfiguration
   { destinationDirectory = "docs"
   }
 
+style :: Style 
+style = haddock
+
+pandocCompiler' :: Compiler (Item String)
+pandocCompiler' = pandocCompilerWith 
+  defaultHakyllReaderOptions
+  defaultHakyllWriterOptions
+    { writerHighlightStyle = Just style
+    }
