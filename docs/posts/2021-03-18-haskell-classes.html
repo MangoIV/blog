@@ -10,7 +10,7 @@
     <body>
         <div id="header">
             <div id="logo">
-                <a href="../">My Hakyll Blog</a>
+                <a href="../">MangoIV's Blog</a>
             </div>
             <div id="navigation">
                 <a href="../">Home</a>
@@ -40,9 +40,9 @@
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="ot">  (&lt;&gt;) ::</span> a <span class="ot">-&gt;</span> a <span class="ot">-&gt;</span> a</span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- other class methods ommited because</span></span>
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="co">-- they are unimportant</span></span></code></pre></div>
-<p>The <code>Semigroup</code> class makes it possible to group all Types together with an associative operation, namely <code>&lt;&gt;</code>. In the case of <code>String</code>, this aliases to <code>++</code>, in case of the <code>newtype</code> <code>Sum</code> it aliases to <code>+</code>.</p></li>
+<p>The <code>Semigroup</code> class makes it possible to group Types together with an associative operation, namely <code>&lt;&gt;</code>. In the case of <code>String</code>, this aliases to <code>++</code>, in case of the <code>newtype</code> <code>Sum</code> it aliases to <code>+</code>.</p></li>
 <li><h3 id="a-way-to-define-functions-from-the-type-to-the-value-level">A way to define functions from the type to the value level</h3>
-<p>of course here I’m obligated to show the infamous <code>reifyNat</code> example.</p>
+<p>Of course here I’m obligated to show the infamous <code>reifyNat</code> example.</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="ot">{-# LANGUAGE KindSignatures, DataKinds, </span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ot">    AllowAmbiguousTypes, TypeApplications, </span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="ot">    ScopedTypeVariables #-}</span></span>
@@ -69,7 +69,7 @@
 <p>This generalizes and at the same time - at least in my opinion - abuses the class mechanism. I think if you use classes to overload function names, the grouped types should at least in some sense allow for the definition of laws for the class, which makes this a subset of 1.</p></li>
 <li><h3 id="a-way-to-define-relations-between-types">A way to define Relations between types</h3>
 <p>A nice example for that is that you might always want a singleton in a length indexed vector to be returned as the element it actually contains instead of the singleton to save unwrapping. This might sound a bit contrived but I have encountered this particular example two times in a short time recently so I don’t want to leave it out:</p>
-<p>First of all let us - after enabling some more extensions, I will not continue writing them down anymre as GHC offers you to activate them anyway - define a vector GADT:</p>
+<p>First of all let us - after enabling some more extensions, I will not continue writing them down, as GHC offers you to activate them anyway - define a vector GADT:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">data</span> <span class="dt">Vec</span> (<span class="ot">n ::</span> <span class="dt">Nat</span>) (<span class="ot">a::</span><span class="dt">Type</span>) <span class="kw">where</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">Nil</span><span class="ot"> ::</span> <span class="dt">Vec</span> <span class="dt">Z</span> a</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="ot">  (:::) ::</span> a <span class="ot">-&gt;</span> <span class="dt">Vec</span> n a <span class="ot">-&gt;</span> <span class="dt">Vec</span> (<span class="dt">S</span> n) a</span>
@@ -103,6 +103,49 @@
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>notsing <span class="ot">=</span> maybeUnwrap (<span class="dv">4</span> <span class="op">:::</span> <span class="dv">3</span> <span class="op">:::</span> <span class="dt">Nil</span>)</span></code></pre></div>
 <p>if we ask ghc what type <code>sing</code> has it will happily tell us that it is an <code>Integer</code> (it defaults the literal 3 to be of that type)</p></li>
 </ol>
+<h3 id="so-whats-the-issue">So what’s the issue?</h3>
+<p>In my humble opinion, it is a big issue that instance resolution happens strictly <em>before</em> unification, making it impossible to go back to resolution if unification has finishes, that means in particular that there cannot be two instances that have the same instance head but different contexts (This is because GHC only considers the head of the instance when doing instance declaration).</p>
+<p>A good example for this would be the following scenario:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="dt">D</span> a b <span class="kw">where</span> <span class="co">-- fallible Coercion</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ot">  g ::</span> a <span class="ot">-&gt;</span> b </span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="dt">C</span> a b <span class="kw">where</span> <span class="co">-- infallible Coercion</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="ot">  f ::</span> a <span class="ot">-&gt;</span> b </span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="dt">D</span> b a <span class="ot">=&gt;</span> <span class="dt">C</span> a b <span class="kw">where</span> </span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>  f <span class="ot">=</span> unsafeCoerce <span class="co">-- not really, but you get the idea</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> </span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>  ( <span class="dt">E</span> a </span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>  , c <span class="op">~</span> <span class="dt">Fam</span> a b <span class="co">-- Fam is an associated type family to E</span></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>  ) <span class="ot">=&gt;</span> </span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>  <span class="dt">C</span> a c <span class="kw">where</span> <span class="co">-- here I get a more specific type, </span></span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>              <span class="co">-- i.e. the type resulting from application</span></span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>              <span class="co">-- of Fam but I can't write that obvious </span></span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>              <span class="co">-- reasons, it would be practical, tho</span></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>  f <span class="ot">=</span> classMethodOfE</span></code></pre></div>
+<p>There really is no possibility to make this work - for obvious reasons, we have to commit to an instance <em>before</em> the type family reduces, so we cannot know whether the type family application is more specific.</p>
+<p>I have two basic ideas to losen this constraint:</p>
+<ol type="1">
+<li><h3 id="go-back-to-instance-resolution-after-failing-to-unify">Go back to instance resolution after failing to unify</h3></li>
+</ol>
+<p>Like this we could consider the context, in the example, first choose any of the instances, try to unify, if that fails, choose any of the remaining equally specific instances, only fail if there are no instances left that fit the type and unify.</p>
+<p>A justified concern with that is, that there is no real way to choose which instance to pick when there are two matching instances, because potentially, there can be two instances that both match the type <em>and</em> unify.</p>
+<p>There are two solutions to account for that:</p>
+<ul>
+<li>disallow two instances that are not disjoint</li>
+<li>make it the concern of the programmer (of course, this is the worse option)</li>
+</ul>
+<ol start="2" type="1">
+<li><h3 id="instance-families">instance families</h3></li>
+</ol>
+<p>I propose a syntax like:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode haskell"><code class="sourceCode haskell"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">instance</span> <span class="kw">family</span> <span class="dt">C</span> a b <span class="kw">where</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">E</span> a, c <span class="op">~</span> <span class="dt">Fam</span> a b <span class="ot">=&gt;</span> f <span class="ot">=</span> <span class="op">...</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">D</span> b a <span class="ot">=&gt;</span> f <span class="ot">=</span> <span class="op">...</span></span></code></pre></div>
+<p>Like this, we can match on the contexts in order and resolve the instances locally so that the impact can be controlled. GHC then choose the first context that matches an lets instances resolution happen after this.</p>
+<p>This has two main advantages: - There is exactly one scenario where we have unification before instance resolution - It is harder to accidentally have two constraints overlap</p>
+<p>Resolving the instance resolution problem could not only make some situations easier to resolve for the programmer but would also offer new programs, consider the following types:</p>
 
         </div>
         <div id="footer">

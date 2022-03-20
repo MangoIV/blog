@@ -18,13 +18,13 @@ Haskell classes are
       -- they are unimportant
     ```
 
-    The `Semigroup` class makes it possible to group all Types 
+    The `Semigroup` class makes it possible to group Types 
     together with an associative operation, namely `<>`. In the 
     case of `String`, this aliases to `++`, in case of the `newtype` 
     `Sum` it aliases to `+`. 
 
 2.  ### A way to define functions from the type to the value level
-    of course here I'm obligated to show the infamous `reifyNat` example.
+    Of course here I'm obligated to show the infamous `reifyNat` example.
 
     ```haskell
     {-# LANGUAGE KindSignatures, DataKinds, 
@@ -69,7 +69,7 @@ Haskell classes are
     want to leave it out: 
 
     First of all let us - after enabling some more extensions, I will not continue 
-    writing them down anymre as GHC offers you to activate them anyway - define a 
+    writing them down, as GHC offers you to activate them anyway - define a 
     vector GADT: 
     ```haskell
     data Vec (n :: Nat) (a::Type) where
@@ -114,6 +114,73 @@ Haskell classes are
     if we ask ghc what type `sing` has it will happily tell us that it is 
     an `Integer` (it defaults the literal 3 to be of that type)
 
+### So what's the issue? 
 
+In my humble opinion, it is a big issue that instance resolution happens strictly *before* unification, making 
+it impossible to go back to resolution if unification has finishes, that means in particular that there cannot 
+be two instances that have the same instance head but different contexts (This is because GHC only considers 
+the head of the instance when doing instance declaration). 
+
+A good example for this would be the following scenario: 
+
+```haskell
+D a b where -- fallible Coercion
+  g :: a -> b 
+
+C a b where -- infallible Coercion
+  f :: a -> b 
+
+instance D b a => C a b where 
+  f = unsafeCoerce -- not really, but you get the idea
+
+instance 
+  ( E a 
+  , c ~ Fam a b -- Fam is an associated type family to E
+  ) => 
+  C a c where -- here I get a more specific type, 
+              -- i.e. the type resulting from application
+              -- of Fam but I can't write that obvious 
+              -- reasons, it would be practical, tho
+  f = classMethodOfE
+```
+
+There really is no possibility to make this work - for obvious reasons, we have to commit to an instance *before*
+the type family reduces, so we cannot know whether the type family application is more specific. 
+
+I have two basic ideas to losen this constraint: 
+
+1. ### Go back to instance resolution after failing to unify
+
+Like this we could consider the context, in the example, first choose any of the instances, try to unify, if 
+that fails, choose any of the remaining equally specific instances, only fail if there are no instances 
+left that fit the type and unify. 
+
+A justified concern with that is, that there is no real way to choose which instance to pick when there are two
+matching instances, because potentially, there can be two instances that both match the type *and* unify. 
+
+There are two solutions to account for that:
+
+- disallow two instances that are not disjoint
+- make it the concern of the programmer (of course, this is the worse option)
+
+2. ### instance families
+
+I propose a syntax like: 
+
+```haskell
+instance family C a b where
+  E a, c ~ Fam a b => f = ...
+  D b a => f = ...
+```
+
+Like this, we can match on the contexts in order and resolve the instances locally so that the impact can be 
+controlled. GHC then choose the first context that matches an lets instances resolution happen after this. 
+
+This has two main advantages: 
+- There is exactly one scenario where we have unification before instance resolution
+- It is harder to accidentally have two constraints overlap 
+
+Resolving the instance resolution problem could not only make some situations easier to resolve for the 
+programmer but would also offer new programs, consider the following types: 
 
 

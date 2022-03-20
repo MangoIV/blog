@@ -23,6 +23,10 @@ main = hakyllWith config $ do
             >>= loadAndApplyTemplate "templates/default.html" defaultContext
             >>= relativizeUrls
 
+    match "CNAME" $ do
+      route  idRoute
+      compile copyFileCompiler
+
     match "posts/*" $ do
         route $ setExtension "html"
         compile $ pandocCompiler'
@@ -60,6 +64,7 @@ main = hakyllWith config $ do
                 >>= relativizeUrls
 
     match "templates/*" $ compile templateCompiler
+    
     
     create [ "css/syntax.css" ] $ do 
       route idRoute 
